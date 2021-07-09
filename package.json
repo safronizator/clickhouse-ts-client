@@ -1,0 +1,29 @@
+{
+  "name": "clickhouse-node-cli",
+  "version": "0.1.0",
+  "description": "Clickhouse DB client for Node JS written in Typescript",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "clickhouse",
+    "db",
+    "client",
+    "driver",
+    "nodejs",
+    "typescript",
+    "ts"
+  ],
+  "author": "safronizator",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^16.0.0",
+    "@types/readline-transform": "^1.0.0",
+    "typescript": "^4.3.5"
+  },
+  "dependencies": {
+    "readline-transform": "^1.0.0",
+    "stronger-typed-streams": "^0.2.0"
+  }
+}
