@@ -1,4 +1,4 @@
-import {ConnectionInterface, Input, QueryContextInterface, ReadableTypedStream} from "./interface";
+import {ConnectionInterface, Input, QueryContextInterface} from "./interface";
 import {URL} from "url";
 import {dsnToUrl} from "./utils";
 import QueryContext from "./QueryContext";

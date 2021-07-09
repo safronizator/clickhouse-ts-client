@@ -3,6 +3,7 @@ import {Dsn} from "./Connection";
 import {Format} from "./interface";
 import ReadableStream = NodeJS.ReadableStream;
 
+
 export const cloneUrl = (u: URL) => new URL(u.href);
 
 export const dsnToUrl = (dsn: Dsn) => {

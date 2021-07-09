@@ -1,5 +1,5 @@
 import "stream";
-import {Readable as TypedReadable} from "stronger-typed-streams";
+import {Readable as TypedReadable} from "stronger-typed-streams"; //TODO: should we avoid this dependency?
 import {Readable} from "stream";
 import ReadableStream = NodeJS.ReadableStream;
 
@@ -23,6 +23,7 @@ export interface QueryContextInterface<T> {
     streamRows<K extends Array<keyof T> = [keyof T]>(): ReadableTypedStream<Row<T, K>>;
 }
 
+//TODO: add row stream format as separate input type?
 export type Input<T> = T[] | ReadableTypedStream<T> | Readable | Buffer | string;
 
 export const isInputString = (i: Input<unknown>): i is string => typeof i === "string";

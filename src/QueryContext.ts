@@ -2,7 +2,8 @@ import {cloneUrl, forceFormat, readAll} from "./utils";
 import {
     Input,
     isInputArray,
-    isInputBuffer, isInputObjectStream,
+    isInputBuffer,
+    isInputObjectStream,
     isInputString,
     QueryContextInterface,
     ReadableTypedStream,
@@ -112,15 +113,16 @@ export default class QueryContext<T> implements QueryContextInterface<T> {
                     return;
                 }
                 //TODO: add custom Error type?
+                //TODO: unnecessary rejecting?
                 readAll(res)
                     .then(msg => reject(new Error(msg || `Got error response from server (status: ${res.statusCode})`)))
                     .catch(err => reject(new Error(`Error reading response: ${err.message}`)));
             });
-            req.once("error", reject);
+            req.once("error", reject); //TODO: unnecessary rejecting?
             if (this.data !== undefined) {
                 pipeline(toRawDataStream(this.data), req, err => {
                     if (err) {
-                        reject(err);
+                        reject(err); //TODO: unnecessary rejecting?
                     }
                     req.end();
                 });
