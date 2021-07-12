@@ -1,21 +1,8 @@
-import {ConnectionInterface, Input, QueryContextInterface} from "./interface";
+import {ConnectionInterface, Dsn, Input, QueryContextInterface} from "./interface";
 import {URL} from "url";
-import {dsnToUrl} from "./utils";
 import QueryContext from "./QueryContext";
+import {dsnToUrl} from "./internal";
 
-
-export interface DsnOpts {
-    proto?: "http" | "https";
-    host: string;
-    port?: number | string;
-    user?: string;
-    pwd?: string;
-    db?: string;
-}
-
-export type DsnUrl = string | URL;
-
-export type Dsn = DsnUrl | DsnOpts;
 
 export interface ConnectionOpts {
     dsn: Dsn;
@@ -33,8 +20,8 @@ export default class Connection implements ConnectionInterface {
         this.url = dsnToUrl(opts?.dsn || defaultUrl);
     }
 
-    query<T>(sql: string, data?: Input<T>): QueryContextInterface<T> {
-        return new QueryContext<T>(this.url, sql, data);
+    query<T, K extends Array<keyof T> = [keyof T]>(sql: string, data?: Input<T, K>): QueryContextInterface<T> {
+        return new QueryContext(this.url, sql, data);
     }
 
 }

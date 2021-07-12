@@ -1,72 +1,17 @@
-import {cloneUrl, forceFormat, readAll} from "./utils";
-import {
-    Input,
-    isInputArray,
-    isInputBuffer,
-    isInputObjectStream,
-    isInputString,
-    QueryContextInterface,
-    ReadableTypedStream,
-    Row
-} from "./interface";
-import {PassThrough, pipeline, Readable, Transform} from "stream";
+import {Input, QueryContextInterface, Row, TypedReadable} from "./interface";
+import {PassThrough, pipeline, Readable} from "stream";
 import {IncomingMessage, request} from "http";
-import ReadlineTransform from "readline-transform";
 import {URL} from "url";
-import ReadableStream = NodeJS.ReadableStream;
+import {cloneUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal";
 
 
-const readline = () => new ReadlineTransform({ skipEmpty: true });
-
-const jsonParser = () => new Transform({
-    writableObjectMode: true,
-    readableObjectMode: true,
-
-    transform(line, encoding, callback) {
-        try {
-            const data = JSON.parse(line);
-            this.push(data);
-            callback();
-        } catch (err) {
-            callback(err);
-        }
-    }
-});
-
-const jsonSerializer = () => new Transform({
-    writableObjectMode: true,
-    readableObjectMode: true,
-
-    transform(data, encoding, callback) {
-        try {
-            const row = JSON.stringify(data);
-            this.push(row);
-            callback();
-        } catch (err) {
-            callback(err);
-        }
-    }
-});
-
-const toRawDataStream = <T>(data: Input<T>): ReadableStream => {
-    if (isInputString(data) || isInputBuffer(data)) {
-        return Readable.from(data);
-    } else if (isInputArray(data)) {
-        return Readable.from(data.map(item => JSON.stringify(item)).join("\n"));
-    } else if (isInputObjectStream(data)) {
-        return data.pipe(jsonSerializer());
-    }
-    return data;
-}
-
-
-export default class QueryContext<T> implements QueryContextInterface<T> {
+export default class QueryContext<T, K extends Array<keyof T>> implements QueryContextInterface<T> {
 
     private readonly url: URL;
     private readonly query: string;
-    private readonly data: Input<T> | undefined;
+    private readonly data: Input<T, K> | undefined;
 
-    constructor(dsn: URL, query: string, data?: Input<T>) {
+    constructor(dsn: URL, query: string, data?: Input<T, K>) {
         this.url = cloneUrl(dsn);
         this.query = query;
         this.data = data;
@@ -81,19 +26,19 @@ export default class QueryContext<T> implements QueryContextInterface<T> {
         await readAll(this._rawStream(this.query));
     }
 
-    streamRaw(): NodeJS.ReadableStream {
+    streamRaw(): Readable {
         return this._rawStream(this.query);
     }
 
-    stream(): ReadableTypedStream<T> {
+    stream(): TypedReadable<T> {
         return this._rawStream(forceFormat(this.query, "JSONEachRow")).pipe(readline()).pipe(jsonParser());
     }
 
-    streamRows<K extends Array<keyof T> = [keyof T] >(): ReadableTypedStream<Row<T, K>> {
+    streamRows<K extends Array<keyof T> = [keyof T] >(): TypedReadable<Row<T, K>> {
         return this._rawStream(forceFormat(this.query, "JSONCompactEachRow")).pipe(readline()).pipe(jsonParser());
     }
 
-    private _rawStream(query: string): NodeJS.ReadableStream {
+    private _rawStream(query: string): Readable {
         const s = new PassThrough();
         this.makeRequest(query).then(res => res.pipe(s)).catch(err => s.destroy(err));
         return s;
@@ -102,7 +47,8 @@ export default class QueryContext<T> implements QueryContextInterface<T> {
     private makeRequest(query: string): Promise<IncomingMessage> {
         return new Promise((resolve, reject) => {
             const url = cloneUrl(this.url);
-            url.searchParams.append("query", query);
+            const { data, format } = normalizeInput(this.data);
+            url.searchParams.append("query", format ? forceFormat(query, format) : query);
             const req = request(url, {
                 //TODO: fix "magic" constant:
                 method: "post"
@@ -119,8 +65,8 @@ export default class QueryContext<T> implements QueryContextInterface<T> {
                     .catch(err => reject(new Error(`Error reading response: ${err.message}`)));
             });
             req.once("error", reject); //TODO: unnecessary rejecting?
-            if (this.data !== undefined) {
-                pipeline(toRawDataStream(this.data), req, err => {
+            if (data) {
+                pipeline(data, req, err => {
                     if (err) {
                         reject(err); //TODO: unnecessary rejecting?
                     }
