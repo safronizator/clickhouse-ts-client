@@ -1,5 +1,6 @@
 import {URL} from "url";
 import {
+    DataProcessingError,
     Dsn,
     Format,
     Input,
@@ -11,7 +12,7 @@ import {
     isInputRowsStream,
     isInputString
 } from "./interface";
-import {Readable, Transform} from "stream";
+import {PassThrough, pipeline, Readable, Transform} from "stream";
 import ReadlineTransform from "readline-transform";
 
 
@@ -40,7 +41,7 @@ export const readAll = async (readable: Readable) => {
     for await (const chunk of readable) {
         chunks.push(chunk);
     }
-    return Buffer.concat(chunks as Uint8Array[]).toString();
+    return Buffer.concat(chunks).toString();
 };
 
 export const readline = () => new ReadlineTransform({ skipEmpty: true });
@@ -55,7 +56,7 @@ export const jsonParser = () => new Transform({
             this.push(data);
             callback();
         } catch (err) {
-            callback(err);
+            callback(new DataProcessingError(err.message));
         }
     }
 });
@@ -70,7 +71,7 @@ export const jsonSerializer = () => new Transform({
             this.push(row);
             callback();
         } catch (err) {
-            callback(err);
+            callback(new DataProcessingError(err.message));
         }
     }
 });
@@ -86,30 +87,37 @@ export const normalizeInput = <T, K extends Array<keyof T>>(i: Input<T, K> | und
     if (i === undefined) {
         return emptyInput;
     } else if (isInputObjectStream(i)) {
+        const data = new PassThrough({ objectMode: true });
+        pipeline(i, jsonSerializer(), data, _ => {});
         return {
-            data: i.pipe(jsonSerializer()),
+            data,
             format: "JSONEachRow"
         };
     } else if (isInputRawStream(i)) {
         return { data: i };
     } else if (isInputString(i) || isInputBuffer(i)) {
-        return { data: Readable.from(i) };
+        return { data: Readable.from(i, { objectMode: false }) };
     } else if (isInputDataRows(i)) {
+        const data = new PassThrough({ objectMode: true });
+        pipeline(Readable.from(i.rows), jsonSerializer(), data, _ => {});
         return {
-            data: Readable.from(i.rows).pipe(jsonSerializer()),
+            data,
             format: "JSONCompactEachRow"
         };
     } else if (isInputRowsStream(i)) {
+        const data = new PassThrough({ objectMode: true });
+        pipeline(i.rows, jsonSerializer(), data, _ => {});
         return {
-            data: i.rows.pipe(jsonSerializer()),
+            data,
             format: "JSONCompactEachRow"
         };
     } else if (isInputDataArray(i)) {
+        const data = new PassThrough({ objectMode: true });
+        pipeline(Readable.from(i), jsonSerializer(), data, _ => {});
         return {
-            data: Readable.from(i).pipe(jsonSerializer()),
+            data,
             format: "JSONEachRow"
         }
     }
-    //TODO: add custom Error type?
-    throw new Error("Unknown input format");
+    throw new DataProcessingError("Unknown input format");
 }

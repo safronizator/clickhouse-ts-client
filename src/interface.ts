@@ -69,3 +69,11 @@ export interface ConnectionInterface {
     query<T, K extends Keys<T>>(sql: string, data?: Input<T, K>): QueryContextInterface<T>;
 
 }
+
+export class ClickhouseError extends Error {}
+
+export class ConnectionError extends ClickhouseError {}
+
+export class DataProcessingError extends ClickhouseError {}
+
+export class QueryingError extends ClickhouseError {}

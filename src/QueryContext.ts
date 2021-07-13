@@ -1,8 +1,27 @@
-import {Input, QueryContextInterface, Row, TypedReadable} from "./interface";
-import {PassThrough, pipeline, Readable} from "stream";
+import {
+    ClickhouseError,
+    ConnectionError, DataProcessingError,
+    Input,
+    QueryContextInterface,
+    QueryingError,
+    Row,
+    TypedReadable
+} from "./interface";
+import {PassThrough, Readable} from "stream";
 import {IncomingMessage, request} from "http";
 import {URL} from "url";
 import {cloneUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal";
+import {pipeline} from "stream/promises";
+
+
+enum HttpStatus {
+    OK = 200
+}
+
+enum HttpMethod {
+    Get = "get",
+    Post = "post"
+}
 
 
 export default class QueryContext<T, K extends Array<keyof T>> implements QueryContextInterface<T> {
@@ -40,7 +59,7 @@ export default class QueryContext<T, K extends Array<keyof T>> implements QueryC
 
     private _rawStream(query: string): Readable {
         const s = new PassThrough();
-        this.makeRequest(query).then(res => res.pipe(s)).catch(err => s.destroy(err));
+        this.makeRequest(query).then(res => pipeline(res, s)).catch(err => s.destroy(err));
         return s;
     }
 
@@ -49,30 +68,21 @@ export default class QueryContext<T, K extends Array<keyof T>> implements QueryC
             const url = cloneUrl(this.url);
             const { data, format } = normalizeInput(this.data);
             url.searchParams.append("query", format ? forceFormat(query, format) : query);
-            const req = request(url, {
-                //TODO: fix "magic" constant:
-                method: "post"
-            }, res => {
-                //TODO: fix "magic" constant:
-                if (res.statusCode === 200) {
-                    resolve(res);
-                    return;
+            const req = request(url, { method: HttpMethod.Post }, res => {
+                if (res.statusCode === HttpStatus.OK) {
+                    return resolve(res);
                 }
-                //TODO: add custom Error type?
-                //TODO: unnecessary rejecting?
                 readAll(res)
-                    .then(msg => reject(new Error(msg || `Got error response from server (status: ${res.statusCode})`)))
-                    .catch(err => reject(new Error(`Error reading response: ${err.message}`)));
+                    .then(msg => reject(new QueryingError(msg || `Got error response from server (status: ${res.statusCode})`)))
+                    .catch(err => reject(new QueryingError(`Error reading response: ${err.message}`)));
             });
-            req.once("error", reject); //TODO: unnecessary rejecting?
             if (data) {
-                pipeline(data, req, err => {
-                    if (err) {
-                        reject(err); //TODO: unnecessary rejecting?
-                    }
-                    req.end();
+                pipeline(data, req).catch(err => {
+                    reject(err instanceof ClickhouseError ? err : new DataProcessingError(err.message));
                 });
+                // req stream will be closed automatically
             } else {
+                req.once("error", err => reject(new ConnectionError(err.message)));
                 req.end();
             }
         })
