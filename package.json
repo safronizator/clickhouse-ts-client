@@ -3,8 +3,23 @@
   "version": "0.1.0",
   "description": "Clickhouse DB client for Node JS written in Typescript",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "recompile": "rm -rf dist/ && tsc",
+    "dist-clean": "rm -rf dist/",
+    "prepublishOnly": "npm run recompile"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "homepage": "https://github.com/webproducer/clickhouse-node-cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webproducer/clickhouse-node-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/webproducer/clickhouse-node-cli/issues"
   },
   "keywords": [
     "clickhouse",
@@ -15,7 +30,7 @@
     "typescript",
     "ts"
   ],
-  "author": "safronizator",
+  "author": "safronizator <sasha@webproducers.ru>",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^16.0.0",
