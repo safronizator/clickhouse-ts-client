@@ -1,5 +1,5 @@
 {
-  "name": "clickhouse-node-cli",
+  "name": "@webproducer/clickhouse-node-cli",
   "version": "0.1.0",
   "description": "Clickhouse DB client for Node JS written in Typescript",
   "main": "dist/index.js",
