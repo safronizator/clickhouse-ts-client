@@ -61,13 +61,20 @@ export const jsonParser = () => new Transform({
     }
 });
 
+function dateReplacer(this: { [key: string]: any; }, k: string, v: any) {
+    if (this[k] instanceof Date) {
+        return Math.floor(this[k].getTime() / 1000);
+    }
+    return v;
+}
+
 export const jsonSerializer = () => new Transform({
     writableObjectMode: true,
     readableObjectMode: true,
 
     transform(data, encoding, callback) {
         try {
-            const row = JSON.stringify(data);
+            const row = JSON.stringify(data, dateReplacer);
             this.push(row);
             callback();
         } catch (err) {
