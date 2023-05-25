@@ -1,3 +1,5 @@
+import ReadlineTransform from "readline-transform";
+import {PassThrough, pipeline, Readable, Transform} from "stream";
 import {URL} from "url";
 import {
     DataProcessingError,
@@ -10,10 +12,9 @@ import {
     isInputObjectStream,
     isInputRawStream,
     isInputRowsStream,
-    isInputString
+    isInputString,
+    Keys
 } from "./interface.js";
-import {PassThrough, pipeline, Readable, Transform} from "stream";
-import ReadlineTransform from "readline-transform";
 
 
 export const cloneUrl = (u: URL) => new URL(u.href);
@@ -90,7 +91,7 @@ export interface NormalizedInput {
 
 export const emptyInput: NormalizedInput = {};
 
-export const normalizeInput = <T, K extends Array<keyof T>>(i: Input<T, K> | undefined): NormalizedInput => {
+export const normalizeInput = <T, K extends Keys<T>>(i: Input<T, K> | undefined): NormalizedInput => {
     if (i === undefined) {
         return emptyInput;
     } else if (isInputObjectStream(i)) {

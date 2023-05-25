@@ -1,8 +1,8 @@
 export * from "./interface.js";
 export * from "./utils.js";
 
-import QueryContext from "./QueryContext";
 import Connection from "./Connection";
+import QueryContext from "./QueryContext";
 
 export { QueryContext };
 

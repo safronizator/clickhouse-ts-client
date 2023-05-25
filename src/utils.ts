@@ -1,6 +1,6 @@
 import {Duplex, PassThrough} from "stream";
-import {Row, TypedReadable, TypedWritable} from "./interface.js";
 import {pipeline as pipeline_internal} from "stream/promises";
+import {Keys, Row, TypedReadable, TypedWritable} from "./interface.js";
 import ReadableStream = NodeJS.ReadableStream;
 import WritableStream = NodeJS.WritableStream;
 
@@ -8,7 +8,7 @@ export const createStreamInput = <T>(): TypedReadable<T> & TypedWritable<T> => n
     objectMode: true
 });
 
-export const createRowsStreamInput = <T, K extends Array<keyof T> = [keyof T]>(): TypedReadable<Row<T, K>> & TypedWritable<Row<T, K>> => new PassThrough({
+export const createRowsStreamInput = <T, K extends Keys<T> = Keys<T>>(): TypedReadable<Row<T, K>> & TypedWritable<Row<T, K>> => new PassThrough({
     objectMode: true
 });
 

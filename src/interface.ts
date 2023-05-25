@@ -16,11 +16,11 @@ export interface TypedWritable<T> extends Writable {
     end(cb?: () => void): void;
 }
 
-type Keys<T> = Array<keyof T>;
+export type Keys<T> = Array<keyof T>;
 
 type Lookup<T, K> = K extends keyof T ? T[K] : never;
 
-export type Row<T, K extends Keys<T>> = { [I in keyof K]: Lookup<T, K[I]> };
+export type Row<T, K extends Keys<T> = Keys<T>> = { [I in keyof K]: Lookup<T, K[I]> };
 
 export interface QueryContextInterface<T> {
     exec(): Promise<void>;
@@ -39,6 +39,7 @@ type DataRowsInput<T, K extends Keys<T>> = { rows: Array<Row<T, K>> };
 type DataInput<T, K extends Keys<T>> = T[] | DataRowsInput<T, K>;
 
 export type Input<T, K extends Keys<T> = Keys<T>> = StreamInput<T, K> | DataInput<T, K> | RawInput;
+
 
 export const isReadable = (i: any): i is Readable => (i as Readable).readableObjectMode !== undefined;
 export const isInputBuffer = <T, K extends Keys<T>>(i: Input<T, K>): i is Buffer => i instanceof Buffer;
@@ -66,7 +67,19 @@ export type Dsn = DsnUrl | DsnOpts;
 
 export interface ConnectionInterface {
 
-    query<T, K extends Keys<T>>(sql: string, data?: Input<T, K>): QueryContextInterface<T>;
+    // query without input
+    query<T>(sql: string): QueryContextInterface<T>;
+
+    // input as raw
+    query<T>(sql: string, data: RawInput): QueryContextInterface<T>;
+
+    // input as objects
+    query<T>(sql: string, data: T[]): QueryContextInterface<T>;
+    query<T>(sql: string, data: TypedReadable<T>): QueryContextInterface<T>;
+
+    // input as rows
+    query<T, K extends Keys<T> = Keys<T>>(sql: string, data: RowsStreamInput<T, K>): QueryContextInterface<T>;
+    query<T, K extends Keys<T> = Keys<T>>(sql: string, data: DataRowsInput<T, K>): QueryContextInterface<T>;
 
 }
 

@@ -1,7 +1,7 @@
-import {ConnectionInterface, Dsn, Input, QueryContextInterface} from "./interface.js";
 import {URL} from "url";
-import QueryContext from "./QueryContext.js";
+import {ConnectionInterface, Dsn, Input, Keys, QueryContextInterface} from "./interface.js";
 import {dsnToUrl} from "./internal.js";
+import QueryContext from "./QueryContext.js";
 
 
 export interface ConnectionOpts {
@@ -20,7 +20,7 @@ export default class Connection implements ConnectionInterface {
         this.url = dsnToUrl(opts?.dsn || defaultUrl);
     }
 
-    query<T, K extends Array<keyof T> = Array<keyof T>>(sql: string, data?: Input<T, K>): QueryContextInterface<T> {
+    query<T, K extends Keys<T> = Keys<T>>(sql: string, data?: Input<T, K>): QueryContextInterface<T> {
         return new QueryContext(this.url, sql, data);
     }
 

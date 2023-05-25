@@ -1,17 +1,19 @@
+import {IncomingMessage, request} from "http";
+import {PassThrough, Readable} from "stream";
+import {pipeline} from "stream/promises";
+import {URL} from "url";
 import {
     ClickhouseError,
-    ConnectionError, DataProcessingError,
+    ConnectionError,
+    DataProcessingError,
     Input,
+    Keys,
     QueryContextInterface,
     QueryingError,
     Row,
     TypedReadable
 } from "./interface.js";
-import {PassThrough, Readable} from "stream";
-import {IncomingMessage, request} from "http";
-import {URL} from "url";
 import {cloneUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal.js";
-import {pipeline} from "stream/promises";
 
 
 enum HttpStatus {
@@ -24,7 +26,7 @@ enum HttpMethod {
 }
 
 
-export default class QueryContext<T, K extends Array<keyof T>> implements QueryContextInterface<T> {
+export default class QueryContext<T, K extends Keys<T>> implements QueryContextInterface<T> {
 
     private readonly url: URL;
     private readonly query: string;
@@ -53,7 +55,7 @@ export default class QueryContext<T, K extends Array<keyof T>> implements QueryC
         return this._rawStream(forceFormat(this.query, "JSONEachRow")).pipe(readline()).pipe(jsonParser());
     }
 
-    streamRows<K extends Array<keyof T> = [keyof T] >(): TypedReadable<Row<T, K>> {
+    streamRows<K extends Keys<T> = Keys<T>>(): TypedReadable<Row<T, K>> {
         return this._rawStream(forceFormat(this.query, "JSONCompactEachRow")).pipe(readline()).pipe(jsonParser());
     }
 
