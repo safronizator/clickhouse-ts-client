@@ -1,5 +1,5 @@
-export * from "./interface";
-export * from "./utils";
+export * from "./interface.js";
+export * from "./utils.js";
 
 import QueryContext from "./QueryContext";
 import Connection from "./Connection";

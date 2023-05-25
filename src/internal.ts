@@ -11,7 +11,7 @@ import {
     isInputRawStream,
     isInputRowsStream,
     isInputString
-} from "./interface";
+} from "./interface.js";
 import {PassThrough, pipeline, Readable, Transform} from "stream";
 import ReadlineTransform from "readline-transform";
 

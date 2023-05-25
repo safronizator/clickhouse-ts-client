@@ -1,5 +1,5 @@
 import {Duplex, PassThrough} from "stream";
-import {Row, TypedReadable, TypedWritable} from "./interface";
+import {Row, TypedReadable, TypedWritable} from "./interface.js";
 import {pipeline as pipeline_internal} from "stream/promises";
 import ReadableStream = NodeJS.ReadableStream;
 import WritableStream = NodeJS.WritableStream;

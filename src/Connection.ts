@@ -1,7 +1,7 @@
-import {ConnectionInterface, Dsn, Input, QueryContextInterface} from "./interface";
+import {ConnectionInterface, Dsn, Input, QueryContextInterface} from "./interface.js";
 import {URL} from "url";
-import QueryContext from "./QueryContext";
-import {dsnToUrl} from "./internal";
+import QueryContext from "./QueryContext.js";
+import {dsnToUrl} from "./internal.js";
 
 
 export interface ConnectionOpts {

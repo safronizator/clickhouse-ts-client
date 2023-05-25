@@ -6,11 +6,11 @@ import {
     QueryingError,
     Row,
     TypedReadable
-} from "./interface";
+} from "./interface.js";
 import {PassThrough, Readable} from "stream";
 import {IncomingMessage, request} from "http";
 import {URL} from "url";
-import {cloneUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal";
+import {cloneUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal.js";
 import {pipeline} from "stream/promises";
 
 
