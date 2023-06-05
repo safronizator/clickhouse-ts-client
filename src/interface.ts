@@ -22,36 +22,6 @@ type Lookup<T, K> = K extends keyof T ? T[K] : never;
 
 export type Row<T, K extends Keys<T> = Keys<T>> = { [I in keyof K]: Lookup<T, K[I]> };
 
-export interface QueryContextInterface<T> {
-    exec(): Promise<void>;
-    getResult(): Promise<T[]>;
-    stream(): TypedReadable<T>;
-    streamRaw(): Readable;
-    streamRows<K extends Keys<T>>(): TypedReadable<Row<T, K>>;
-}
-
-type RawInput = Readable | Buffer | string;
-
-type RowsStreamInput<T, K extends Keys<T>> = { rows: TypedReadable<Row<T, K>> };
-type StreamInput<T, K extends Keys<T>> = TypedReadable<T> | RowsStreamInput<T, K>;
-
-type DataRowsInput<T, K extends Keys<T>> = { rows: Array<Row<T, K>> };
-type DataInput<T, K extends Keys<T>> = T[] | DataRowsInput<T, K>;
-
-export type Input<T, K extends Keys<T> = Keys<T>> = StreamInput<T, K> | DataInput<T, K> | RawInput;
-
-
-export const isReadable = (i: any): i is Readable => (i as Readable).readableObjectMode !== undefined;
-export const isInputBuffer = <T, K extends Keys<T>>(i: Input<T, K>): i is Buffer => i instanceof Buffer;
-export const isInputString = <T, K extends Keys<T>>(i: Input<T, K>): i is string => typeof i === "string";
-export const isInputRawStream = <T, K extends Keys<T>>(i: Input<T, K>): i is Readable => isReadable(i) && !i.readableObjectMode;
-
-export const isInputObjectStream = <T, K extends Keys<T>>(i: Input<T, K>): i is TypedReadable<T> => isReadable(i) && i.readableObjectMode;
-export const isInputRowsStream = <T, K extends Keys<T>>(i: Input<T, K>): i is RowsStreamInput<T, K> => (i as RowsStreamInput<T, K>).rows !== undefined && isReadable((i as RowsStreamInput<T, K>).rows);
-
-export const isInputDataArray = <T, K extends Keys<T>>(i: Input<T, K>): i is T[] => Array.isArray(i);
-export const isInputDataRows = <T, K extends Keys<T>>(i: Input<T, K>): i is DataRowsInput<T, K> => Array.isArray((i as DataRowsInput<T, K>).rows);
-
 export interface DsnOpts {
     proto?: "http" | "https";
     host: string;
@@ -65,22 +35,27 @@ export type DsnUrl = string | URL;
 
 export type Dsn = DsnUrl | DsnOpts;
 
-export interface ConnectionInterface {
+export type RawInput = Readable | Buffer | string;
+export type ArrayOrStreamInput<T> = T[] | TypedReadable<T>;
+export type RowsStreamInput1<T> = { rows: TypedReadable<T>; };
+export type RowsDataArrayInput<T> = { rows: T[]; };
+export type RowsInput<T> = RowsStreamInput1<T> | RowsDataArrayInput<T>;
+export type Input<T> = ArrayOrStreamInput<T> | RowsInput<T> | RawInput;
 
-    // query without input
-    query<T>(sql: string): QueryContextInterface<T>;
+export interface QueryContextInterface<O, I> {
+    exec: (input: I) => Promise<void>;
+    getResult: (input: I) => Promise<O[]>;
+    stream: (input: I) => TypedReadable<O>;
+    streamRaw: (input: I) => Readable;
+    streamRows: <K extends Array<unknown>>(input: I) => TypedReadable<K>;
+}
 
-    // input as raw
-    query<T>(sql: string, data: RawInput): QueryContextInterface<T>;
-
-    // input as objects
-    query<T>(sql: string, data: T[]): QueryContextInterface<T>;
-    query<T>(sql: string, data: TypedReadable<T>): QueryContextInterface<T>;
-
-    // input as rows
-    query<T, K extends Keys<T> = Keys<T>>(sql: string, data: RowsStreamInput<T, K>): QueryContextInterface<T>;
-    query<T, K extends Keys<T> = Keys<T>>(sql: string, data: DataRowsInput<T, K>): QueryContextInterface<T>;
-
+export interface QueryFunc {
+    <O>(sql: string): QueryContextInterface<O, void | Input<any>>;
+    <O, I extends never>(sql: string): QueryContextInterface<O, void>;
+    <O, I extends RawInput>(sql: string): QueryContextInterface<O, RawInput>;
+    <O, I extends Array<any>>(sql: string): QueryContextInterface<O, RowsInput<I>>;
+    <O, I extends object>(sql: string): QueryContextInterface<O, ArrayOrStreamInput<I>>;
 }
 
 export class ClickhouseError extends Error {}

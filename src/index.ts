@@ -1,9 +1,6 @@
 export * from "./interface.js";
 export * from "./utils.js";
 
-import Connection from "./Connection";
-import QueryContext from "./QueryContext";
+import {connect} from "./connect.js";
 
-export { QueryContext };
-
-export default Connection;
+export default connect;

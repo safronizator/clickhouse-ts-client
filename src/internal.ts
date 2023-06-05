@@ -6,14 +6,9 @@ import {
     Dsn,
     Format,
     Input,
-    isInputBuffer,
-    isInputDataArray,
-    isInputDataRows,
-    isInputObjectStream,
-    isInputRawStream,
-    isInputRowsStream,
-    isInputString,
-    Keys
+    RowsDataArrayInput,
+    RowsStreamInput1,
+    TypedReadable
 } from "./interface.js";
 
 
@@ -91,35 +86,44 @@ export interface NormalizedInput {
 
 export const emptyInput: NormalizedInput = {};
 
-export const normalizeInput = <T, K extends Keys<T>>(i: Input<T, K> | undefined): NormalizedInput => {
+export const isReadable = (i: any): i is Readable => (i as Readable).readableObjectMode !== undefined;
+export const isBuffer = (i: Input<any>): i is Buffer => i instanceof Buffer;
+export const isString = (i: Input<any>): i is string => typeof i === "string";
+export const isStream = <T>(i: Input<T>): i is TypedReadable<T> => isReadable(i) && i.readableObjectMode;
+export const isRawStream = (i: Input<any>): i is Readable => isReadable(i) && !i.readableObjectMode;
+export const isRowsStream = <T>(i: Input<T>): i is RowsStreamInput1<T> => (i as RowsStreamInput1<T>).rows !== undefined && isStream((i as RowsStreamInput1<T>).rows);
+export const isDataArray = <T>(i: Input<T>): i is Array<T> => Array.isArray(i);
+export const isRowsDataArray = <T>(i: Input<T>): i is RowsDataArrayInput<T> => isDataArray((i as RowsDataArrayInput<T>).rows);
+
+export const normalizeInput1 = <T>(i: Input<T> | void): NormalizedInput => {
     if (i === undefined) {
         return emptyInput;
-    } else if (isInputObjectStream(i)) {
+    } else if (isStream(i)) {
         const data = new PassThrough({ objectMode: true });
         pipeline(i, jsonSerializer(), data, _ => {});
         return {
             data,
             format: "JSONEachRow"
         };
-    } else if (isInputRawStream(i)) {
+    } else if (isRawStream(i)) {
         return { data: i };
-    } else if (isInputString(i) || isInputBuffer(i)) {
+    } else if (isString(i) || isBuffer(i)) {
         return { data: Readable.from(i, { objectMode: false }) };
-    } else if (isInputDataRows(i)) {
+    } else if (isRowsDataArray(i)) {
         const data = new PassThrough({ objectMode: true });
         pipeline(Readable.from(i.rows), jsonSerializer(), data, _ => {});
         return {
             data,
             format: "JSONCompactEachRow"
         };
-    } else if (isInputRowsStream(i)) {
+    } else if (isRowsStream(i)) {
         const data = new PassThrough({ objectMode: true });
         pipeline(i.rows, jsonSerializer(), data, _ => {});
         return {
             data,
             format: "JSONCompactEachRow"
         };
-    } else if (isInputDataArray(i)) {
+    } else if (isDataArray(i)) {
         const data = new PassThrough({ objectMode: true });
         pipeline(Readable.from(i), jsonSerializer(), data, _ => {});
         return {
