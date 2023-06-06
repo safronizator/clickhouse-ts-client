@@ -43,14 +43,15 @@ export type RowsInput<T> = RowsStreamInput1<T> | RowsDataArrayInput<T>;
 export type Input<T> = ArrayOrStreamInput<T> | RowsInput<T> | RawInput;
 
 export interface QueryContextInterface<O, I> {
-    exec: (input: I) => Promise<void>;
-    getResult: (input: I) => Promise<O[]>;
-    stream: (input: I) => TypedReadable<O>;
-    streamRaw: (input: I) => Readable;
-    streamRows: <K extends Array<unknown>>(input: I) => TypedReadable<K>;
+    execute: (input: I) => Promise<void>;
+    parseResult: (input: I) => Promise<O[]>;
+    parseResultRows: <K extends Array<unknown>>(input: I) => Promise<K[]>;
+    streamResult: (input: I) => TypedReadable<O>;
+    streamResultRaw: (input: I) => Readable;
+    streamResultRows: <K extends Array<unknown>>(input: I) => TypedReadable<K>;
 }
 
-export interface QueryFunc {
+export interface QueryFactoryFunc {
     <O>(sql: string): QueryContextInterface<O, void | Input<any>>;
     <O, I extends never>(sql: string): QueryContextInterface<O, void>;
     <O, I extends RawInput>(sql: string): QueryContextInterface<O, RawInput>;

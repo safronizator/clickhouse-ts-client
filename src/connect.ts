@@ -8,11 +8,11 @@ import {
     DataProcessingError,
     Dsn,
     Input,
-    QueryFunc,
+    QueryFactoryFunc,
     QueryingError,
     TypedReadable
 } from "./interface.js";
-import {cloneUrl, dsnToUrl, forceFormat, jsonParser, normalizeInput1, readAll, readline} from "./internal.js";
+import {cloneUrl, dsnToUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal.js";
 
 
 const defaultUrl = "http://localhost:8123/";
@@ -29,7 +29,7 @@ enum HttpMethod {
 const makeRequest = (server: URL, query: string, input: Input<unknown> | void): Promise<IncomingMessage> => {
     return new Promise((resolve, reject) => {
         const url = cloneUrl(server);
-        const { data, format } = normalizeInput1(input);
+        const { data, format } = normalizeInput(input);
         url.searchParams.append("query", format ? forceFormat(query, format) : query);
         const req = request(url, { method: HttpMethod.Post }, res => {
             if (res.statusCode === HttpStatus.OK) {
@@ -52,7 +52,7 @@ const makeRequest = (server: URL, query: string, input: Input<unknown> | void): 
 };
 
 
-export const connect = (dsn?: Dsn): QueryFunc => {
+export const connect = (dsn?: Dsn): QueryFactoryFunc => {
 
     const url = dsnToUrl(dsn || defaultUrl);
 
@@ -63,28 +63,33 @@ export const connect = (dsn?: Dsn): QueryFunc => {
     };
 
     return <O, I>(sql: string) => {
-        const getResult = async <I>(input: void | Input<I>): Promise<O[]> => {
+        const execute = async (input: void | Input<I>): Promise<void> => {
+            await readAll(rawStream(sql, input));
+        };
+        const parseResult = async <I>(input: void | Input<I>): Promise<O[]> => {
             const res = JSON.parse(await readAll(rawStream(forceFormat(sql, "JSON"), input)));
             return res.data;
         };
-        const exec = async (input: void | Input<I>): Promise<void> => {
-            await readAll(rawStream(sql, input));
+        const parseResultRows = async <K extends Array<unknown>>(input: void | Input<I>): Promise<K[]> => {
+            const res = JSON.parse(await readAll(rawStream(forceFormat(sql, "JSONCompact"), input)));
+            return res.data;
         };
-        const streamRaw = (input: void | Input<I>): Readable => {
-            return rawStream(sql, input);
-        };
-        const stream = (input: void | Input<I>): TypedReadable<O> => {
+        const streamResult = (input: void | Input<I>): TypedReadable<O> => {
             return rawStream(forceFormat(sql, "JSONEachRow"), input).pipe(readline()).pipe(jsonParser());
         };
-        const streamRows = <K extends Array<unknown>>(input: void | Input<I>): TypedReadable<K> => {
+        const streamResultRows = <K extends Array<unknown>>(input: void | Input<I>): TypedReadable<K> => {
             return rawStream(forceFormat(sql, "JSONCompactEachRow"), input).pipe(readline()).pipe(jsonParser());
         };
+        const streamResultRaw = (input: void | Input<I>): Readable => {
+            return rawStream(sql, input);
+        };
         return {
-            getResult,
-            exec,
-            streamRaw,
-            stream,
-            streamRows
+            execute,
+            parseResult,
+            parseResultRows,
+            streamResult,
+            streamResultRaw,
+            streamResultRows
         };
     };
 };
