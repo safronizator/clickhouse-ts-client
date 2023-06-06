@@ -95,7 +95,7 @@ export const isRowsStream = <T>(i: Input<T>): i is RowsStreamInput1<T> => (i as 
 export const isDataArray = <T>(i: Input<T>): i is Array<T> => Array.isArray(i);
 export const isRowsDataArray = <T>(i: Input<T>): i is RowsDataArrayInput<T> => isDataArray((i as RowsDataArrayInput<T>).rows);
 
-export const normalizeInput1 = <T>(i: Input<T> | void): NormalizedInput => {
+export const normalizeInput = <T>(i: Input<T> | void): NormalizedInput => {
     if (i === undefined) {
         return emptyInput;
     } else if (isStream(i)) {
