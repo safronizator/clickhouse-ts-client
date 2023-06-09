@@ -12,3 +12,9 @@ export const createRawStreamInput = (): Duplex => new PassThrough();
 
 export const pipeline = <I, O extends I>(src: TypedReadable<I>, dst: TypedWritable<O>): Promise<void> =>
     pipeline_internal(src as unknown as ReadableStream, dst as unknown as WritableStream);
+
+export type Keys<T> = Array<keyof T>;
+
+type Lookup<T, K> = K extends keyof T ? T[K] : never;
+
+export type Row<T, K extends Keys<T> = Keys<T>> = { [I in keyof K]: Lookup<T, K[I]> };

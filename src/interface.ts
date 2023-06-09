@@ -13,14 +13,8 @@ export interface TypedReadable<T> extends Readable {
 export interface TypedWritable<T> extends Writable {
     write(chunk: T, cb?: (error: Error | null | undefined) => void): boolean;
     write(chunk: T, encoding: never, cb?: (error: Error | null | undefined) => void): boolean;
-    end(cb?: () => void): void;
+    end(cb?: () => void): this;
 }
-
-export type Keys<T> = Array<keyof T>;
-
-type Lookup<T, K> = K extends keyof T ? T[K] : never;
-
-export type Row<T, K extends Keys<T> = Keys<T>> = { [I in keyof K]: Lookup<T, K[I]> };
 
 export interface DsnOpts {
     proto?: "http" | "https";
@@ -35,6 +29,12 @@ export type DsnUrl = string | URL;
 
 export type Dsn = DsnUrl | DsnOpts;
 
+export enum ParseMode {
+    Raw,
+    Rows,
+    Objects
+}
+
 export type RawInput = Readable | Buffer | string;
 export type ArrayOrStreamInput<T> = T[] | TypedReadable<T>;
 export type RowsStreamInput1<T> = { rows: TypedReadable<T>; };
@@ -42,21 +42,46 @@ export type RowsDataArrayInput<T> = { rows: T[]; };
 export type RowsInput<T> = RowsStreamInput1<T> | RowsDataArrayInput<T>;
 export type Input<T> = ArrayOrStreamInput<T> | RowsInput<T> | RawInput;
 
-export interface QueryContextInterface<O, I> {
-    execute: (input: I) => Promise<void>;
-    parseResult: (input: I) => Promise<O[]>;
-    parseResultRows: <K extends Array<unknown>>(input: I) => Promise<K[]>;
-    streamResult: (input: I) => TypedReadable<O>;
-    streamResultRaw: (input: I) => Readable;
-    streamResultRows: <K extends Array<unknown>>(input: I) => TypedReadable<K>;
+export interface InputFunc<T extends Input<Array<any> | object>> {
+    (input: T): Promise<void>;
 }
 
-export interface QueryFactoryFunc {
-    <O>(sql: string): QueryContextInterface<O, void | Input<any>>;
-    <O, I extends never>(sql: string): QueryContextInterface<O, void>;
-    <O, I extends RawInput>(sql: string): QueryContextInterface<O, RawInput>;
-    <O, I extends Array<any>>(sql: string): QueryContextInterface<O, RowsInput<I>>;
-    <O, I extends object>(sql: string): QueryContextInterface<O, ArrayOrStreamInput<I>>;
+export interface InputFactoryFunc {
+    (sql: string): InputFunc<Input<Array<any> | object>>;
+    <T extends Array<any>>(sql: string): InputFunc<RowsInput<T>>;
+    <T extends object>(sql: string): InputFunc<ArrayOrStreamInput<T>>;
+}
+
+export interface ParseOpts {
+    mode: ParseMode;
+    //TODO: transforming function
+}
+
+export interface ParseOptsRaw extends ParseOpts {
+    mode: ParseMode.Raw;
+}
+
+export interface ParseOptsRows extends ParseOpts {
+    mode: ParseMode.Rows;
+}
+
+export interface ParseOptsObjects extends ParseOpts {
+    mode: ParseMode.Objects;
+}
+
+export interface QueryContextInterface {
+    exec(): Promise<void>;
+    reader(opts?: ParseOptsRaw): () => Readable;
+    reader<T extends Array<any>>(opts: ParseOptsRows): () => TypedReadable<T>;
+    reader<T extends object>(opts: ParseOptsObjects): () => TypedReadable<T>;
+    loader(opts?: ParseOptsRaw): () => Promise<string>;
+    loader<T extends Array<any>>(opts: ParseOptsRows): () => Promise<T[]>;
+    loader<T extends object>(opts: ParseOptsObjects): () => Promise<T[]>;
+}
+
+export interface ConnectorInterface {
+    query: (sql: string) => QueryContextInterface;
+    input: InputFactoryFunc;
 }
 
 export class ClickhouseError extends Error {}
