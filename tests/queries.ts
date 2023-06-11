@@ -11,6 +11,8 @@ CREATE TABLE test
        num  Int      default 0
    ) ENGINE = MergeTree() ORDER BY (dt, mark)`;
 
+export const clearTestTabQuery = "TRUNCATE TABLE test";
+
 export const fillTestTabQuery = `
 INSERT INTO test (dt, mark, text, num) VALUES
     ('2023-01-01 00:00:00', 'a', 'text1', 1),
@@ -38,3 +40,5 @@ export const testData: Test[] = [
         num: 3
     }
 ];
+
+export const selectFullQuery = "SELECT * FROM test ORDER BY dt";

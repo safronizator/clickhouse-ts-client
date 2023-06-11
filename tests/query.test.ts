@@ -1,8 +1,8 @@
 import {strict as assert} from "assert";
 import connect, {ParseMode, Row} from "../src";
 import {readAll} from "../src/internal.js";
-import {Test} from "./model.js";
-import {createTestTabQuery, dropTestTabQuery, fillTestTabQuery, testData} from "./queries.js";
+import {ShortRow, Test} from "./model.js";
+import {createTestTabQuery, dropTestTabQuery, fillTestTabQuery, selectFullQuery, testData} from "./queries.js";
 
 
 describe("Receiving data from DB", () => {
@@ -13,7 +13,7 @@ describe("Receiving data from DB", () => {
     const createTable = query(createTestTabQuery).exec;
     const fillTable = query(fillTestTabQuery).exec;
 
-    const queryFull = query("SELECT * FROM test ORDER BY dt");
+    const queryFull = query(selectFullQuery);
     const queryDateNum = query("SELECT dt, num FROM test ORDER BY dt");
 
     const fullResultRawTabSeparated =
@@ -27,9 +27,7 @@ describe("Receiving data from DB", () => {
         await fillTable();
     });
 
-    after(() => {
-        return dropTable();
-    });
+    after(dropTable);
 
     it("should check result parsing as an array of objects", async () => {
         const loadData = queryFull.loader<Test>({ mode: ParseMode.Objects });
@@ -64,7 +62,7 @@ describe("Receiving data from DB", () => {
     });
 
     it("should check result streaming as parsed rows", async () => {
-        const read = queryDateNum.reader<Row<Test, ["dt", "num"]>>({ mode: ParseMode.Rows });
+        const read = queryDateNum.reader<ShortRow>({ mode: ParseMode.Rows });
         const data = [];
         for await (const entry of read()) {
             data.push(entry);
@@ -84,6 +82,11 @@ describe("Receiving data from DB", () => {
             fullResultRawTabSeparated,
             "Received data is not equal to expected"
         );
+    });
+
+    it("should check proper format substitution", async () => {
+        const loadData = query("select * from test format TabSeparated").loader<Test>({ mode: ParseMode.Objects });
+        assert.deepStrictEqual(await loadData(), testData, "Received data is not equal to expected");
     });
 
 

@@ -1,3 +1,4 @@
+import {Row} from "../src/index.js";
 
 
 export interface Test {
@@ -7,7 +8,4 @@ export interface Test {
     num: number;
 }
 
-
-export interface TabList {
-    name: string;
-}
+export type ShortRow = Row<Test, ["dt", "num"]>;
