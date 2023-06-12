@@ -19,7 +19,16 @@ import {
     QueryingError,
     TypedReadable
 } from "./interface.js";
-import {cloneUrl, dsnToUrl, forceFormat, jsonParser, normalizeInput, readAll, readline} from "./internal.js";
+import {
+    cloneUrl,
+    dsnToUrl,
+    forceFormat,
+    jsonParser,
+    normalizeInput,
+    readAll,
+    readAllObjects,
+    readline
+} from "./internal.js";
 
 
 const defaultUrl = "http://localhost:8123/";
@@ -90,19 +99,13 @@ export const connect = (dsn?: Dsn): ConnectorInterface => {
         function loader <T extends Array<any>>(opts: ParseOptsRows): () => Promise<T[]>;
         function loader <T extends object>(opts: ParseOptsObjects): () => Promise<T[]>;
         function loader <T>(opts: ParseOpts = { mode: ParseMode.Raw }): () => Promise<string | T[]> {
-            //TODO: use reader() to avoid code duplication
-            switch (opts.mode) {
-                case ParseMode.Raw:
-                    return () => readAll(rawStream(sql));
-                case ParseMode.Rows:
-                    return async () =>
-                        JSON.parse(await readAll(rawStream(forceFormat(sql, "JSONCompact")))).data;
-                case ParseMode.Objects:
-                    return async () =>
-                        JSON.parse(await readAll(rawStream(forceFormat(sql, "JSON")))).data;
-                default:
-                    throw new DataProcessingError(`Unknown parse mode: ${opts.mode}`);
+            const read = reader<T>(opts);
+            if (opts.mode === ParseMode.Raw) {
+                return () => readAll(read());
+            } else if (opts.mode === ParseMode.Rows || opts.mode === ParseMode.Objects) {
+                return () => readAllObjects(read());
             }
+            throw new DataProcessingError(`Unknown parse mode: ${opts.mode}`);
         }
         return { exec, reader, loader };
     };

@@ -40,6 +40,14 @@ export const readAll = async (readable: Readable) => {
     return Buffer.concat(chunks).toString();
 };
 
+export const readAllObjects = async <T>(readable: TypedReadable<T>): Promise<T[]> => {
+    const chunks: T[] = [];
+    for await (const chunk of readable) {
+        chunks.push(chunk);
+    }
+    return chunks;
+};
+
 export const readline = () => new ReadlineTransform({ skipEmpty: true });
 
 export const jsonParser = () => new Transform({
