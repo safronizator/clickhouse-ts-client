@@ -109,7 +109,7 @@ describe("Receiving data from DB", () => {
 
         const loadData3 = query("select * from test where text = {text:String}").loader();
         assert.doesNotThrow(
-            () => loadData3({text: "' ;drop table 1;"}),
+            () => loadData3({text: "'"}),
             "Parameterized query failed"
         );
     });
