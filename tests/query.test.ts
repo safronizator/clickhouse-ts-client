@@ -86,8 +86,32 @@ describe("Receiving data from DB", () => {
     });
 
     it("should check proper format substitution", async () => {
-        const loadData = query("select * from test format TabSeparated").loader<Test>({ mode: ParseMode.Objects });
+        const loadData = query("select * from test format TabSeparated")
+            .loader<Test>({ mode: ParseMode.Objects });
         assert.deepStrictEqual(await loadData(), testData, "Received data is not equal to expected");
+    });
+
+    it("should check parameterized query", async () => {
+        const loadData1 = query("select * from test where dt = {timestamp:String}")
+            .loader<Test>({ mode: ParseMode.Objects });
+        assert.deepStrictEqual(
+            await loadData1({timestamp: "2023-01-01 00:00:00"}),
+            [testData[0]],
+            "Received data is not equal to expected"
+        );
+
+        const loadData2 = query("select * from test where text = {text:String} and num = {num:Int}");
+        assert.deepStrictEqual(
+            await loadData2.loader<Test>({ mode: ParseMode.Objects })({ text: "text2", num: 2 }),
+            [testData[1]],
+            "Received data is not equal to expected"
+        );
+
+        const loadData3 = query("select * from test where text = {text:String}").loader();
+        assert.doesNotThrow(
+            () => loadData3({text: "' ;drop table test;"}),
+            "Parameterized query failed"
+        );
     });
 
 

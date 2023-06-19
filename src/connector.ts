@@ -10,6 +10,7 @@ import {
     Dsn,
     Input,
     InputFunc,
+    Parameters,
     ParseMode,
     ParseOpts,
     ParseOptsObjects,
@@ -42,11 +43,12 @@ enum HttpMethod {
     Post = "post"
 }
 
-const makeRequest = (server: URL, query: string, input: Input<unknown> | void): Promise<IncomingMessage> => {
-    return new Promise((resolve, reject) => {
+const makeRequest = (server: URL, query: string, params: Parameters, input: Input<unknown> | void): Promise<IncomingMessage> =>
+    new Promise((resolve, reject) => {
         const url = cloneUrl(server);
         const { data, format } = normalizeInput(input);
         url.searchParams.append("query", format ? forceFormat(query, format) : query);
+        Object.entries(params).forEach(([key, value]) => url.searchParams.append(`param_${key}`, value.toString()));
         const req = request(url, { method: HttpMethod.Post }, res => {
             if (res.statusCode === HttpStatus.OK) {
                 return resolve(res);
@@ -64,46 +66,51 @@ const makeRequest = (server: URL, query: string, input: Input<unknown> | void): 
             req.once("error", err => reject(new ConnectionError(err.message)));
             req.end();
         }
-    })
-};
+    });
 
 
 export const connect = (dsn?: Dsn): ConnectorInterface => {
 
     const url = dsnToUrl(dsn || defaultUrl);
 
-    const rawStream = (query: string, input: Input<unknown> | void): Readable => {
+    const rawStream = (query: string, params: Parameters, input: Input<unknown> | void): Readable => {
         const s = new PassThrough();
-        makeRequest(url, query, input).then(res => pipeline(res, s)).catch(err => s.destroy(err));
+        makeRequest(url, query, params, input).then(res => pipeline(res, s)).catch(err => s.destroy(err));
         return s;
     };
 
     const query = (sql: string): QueryContextInterface => {
-        const exec = () =>
+        const exec = (params: Parameters = {}) =>
             //TODO: should we read response here?
             //TODO: use of skipReader instead readAll may be more efficient
-            readAll(rawStream(sql)).then(() => {});
-        const reader = <T>(opts: ParseOpts = { mode: ParseMode.Raw }): () => Readable | TypedReadable<T> => {
+            readAll(rawStream(sql, params)).then(() => {});
+        const reader = <T>(opts: ParseOpts = { mode: ParseMode.Raw }): (params?: Parameters) => Readable | TypedReadable<T> => {
             switch (opts.mode) {
                 case ParseMode.Raw:
-                    return () => rawStream(sql);
+                    return (params: Parameters = {}) => rawStream(sql, params || {});
                 case ParseMode.Rows:
-                    return () => rawStream(forceFormat(sql, "JSONCompactEachRow")).pipe(readline()).pipe(jsonParser());
+                    return (params: Parameters = {}) =>
+                        rawStream(forceFormat(sql, "JSONCompactEachRow"), params)
+                            .pipe(readline())
+                            .pipe(jsonParser());
                 case ParseMode.Objects:
-                    return () => rawStream(forceFormat(sql, "JSONEachRow")).pipe(readline()).pipe(jsonParser());
+                    return (params: Parameters = {}) =>
+                        rawStream(forceFormat(sql, "JSONEachRow"), params)
+                            .pipe(readline())
+                            .pipe(jsonParser());
                 default:
                     throw new DataProcessingError(`Unknown parse mode: ${opts.mode}`);
             }
         };
-        function loader (opts?: ParseOptsRaw): () => Promise<string>;
-        function loader <T extends Array<any>>(opts: ParseOptsRows): () => Promise<T[]>;
-        function loader <T extends object>(opts: ParseOptsObjects): () => Promise<T[]>;
-        function loader <T>(opts: ParseOpts = { mode: ParseMode.Raw }): () => Promise<string | T[]> {
+        function loader (opts?: ParseOptsRaw): (params?: Parameters) => Promise<string>;
+        function loader <T extends Array<any>>(opts: ParseOptsRows): (params?: Parameters) => Promise<T[]>;
+        function loader <T extends object>(opts: ParseOptsObjects): (params?: Parameters) => Promise<T[]>;
+        function loader <T>(opts: ParseOpts = { mode: ParseMode.Raw }): (params?: Parameters) => Promise<string | T[]> {
             const read = reader<T>(opts);
             if (opts.mode === ParseMode.Raw) {
-                return () => readAll(read());
+                return (params: Parameters = {}) => readAll(read(params));
             } else if (opts.mode === ParseMode.Rows || opts.mode === ParseMode.Objects) {
-                return () => readAllObjects(read());
+                return (params: Parameters = {}) => readAllObjects(read(params));
             }
             throw new DataProcessingError(`Unknown parse mode: ${opts.mode}`);
         }
@@ -111,10 +118,10 @@ export const connect = (dsn?: Dsn): ConnectorInterface => {
     };
 
     const input = <T extends Input<Array<any> | object>>(sql: string): InputFunc<T> =>
-        data =>
+        (data, params) =>
             //TODO: should we read response here?
             //TODO: use of skipReader instead readAll may be more efficient
-            readAll(rawStream(sql, data)).then(() => {});
+            readAll(rawStream(sql, params || {}, data)).then(() => {});
 
     return { query, input };
 };

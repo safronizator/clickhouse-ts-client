@@ -30,6 +30,14 @@ export type DsnUrl = string | URL;
 
 export type Dsn = DsnUrl | DsnOpts;
 
+export interface Parameter {
+    toString(): string;
+}
+
+export interface Parameters {
+    [key: string]: Parameter;
+}
+
 export enum ParseMode {
     Raw,
     Rows,
@@ -44,7 +52,7 @@ export type RowsInput<T> = RowsStreamInput1<T> | RowsDataArrayInput<T>;
 export type Input<T> = ArrayOrStreamInput<T> | RowsInput<T> | RawInput;
 
 export interface InputFunc<T extends Input<Array<any> | object>> {
-    (input: T): Promise<void>;
+    (input: T, params?: Parameters): Promise<void>;
 }
 
 export interface InputFactoryFunc {
@@ -71,13 +79,13 @@ export interface ParseOptsObjects extends ParseOpts {
 }
 
 export interface QueryContextInterface {
-    exec(): Promise<void>;
-    reader(opts?: ParseOptsRaw): () => Readable;
-    reader<T extends Array<any>>(opts: ParseOptsRows): () => TypedReadable<T>;
-    reader<T extends object>(opts: ParseOptsObjects): () => TypedReadable<T>;
-    loader(opts?: ParseOptsRaw): () => Promise<string>;
-    loader<T extends Array<any>>(opts: ParseOptsRows): () => Promise<T[]>;
-    loader<T extends object>(opts: ParseOptsObjects): () => Promise<T[]>;
+    exec(params?: Parameters): Promise<void>;
+    reader(opts?: ParseOptsRaw): (params?: Parameters) => Readable;
+    reader<T extends Array<any>>(opts: ParseOptsRows): (params?: Parameters) => TypedReadable<T>;
+    reader<T extends object>(opts: ParseOptsObjects): (params?: Parameters) => TypedReadable<T>;
+    loader(opts?: ParseOptsRaw): (params?: Parameters) => Promise<string>;
+    loader<T extends Array<any>>(opts: ParseOptsRows): (params?: Parameters) => Promise<T[]>;
+    loader<T extends object>(opts: ParseOptsObjects): (params?: Parameters) => Promise<T[]>;
 }
 
 export interface ConnectorInterface {

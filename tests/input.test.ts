@@ -92,4 +92,20 @@ describe("Sending data to DB", () => {
         assert.deepStrictEqual(await selectFull(), testData, "Received data is not equal to expected");
     });
 
+    it("should check parameterized query", async () => {
+        // Note: normally we can use query/exec for this type of queries, but we want to test input
+        //       with parameters. It is safe enough not to "escape" data passed to the first argument of input func
+        const sendData = input(
+            "insert into test values ({dt:DateTime}, {mark:String}, {text:String}, {num:Int})"
+        );
+        const testEntry = {
+            dt: "2023-01-01 00:00:00",
+            mark: "a",
+            text: "text1",
+            num: 1
+        };
+        await sendData("", testEntry);
+        assert.deepStrictEqual(await selectFull(), [testEntry], "Received data is not equal to expected");
+    });
+
 });
