@@ -1,13 +1,14 @@
 import {strict as assert} from "assert";
-import connect, {ParseMode, Row} from "../src";
+import {ParseMode, Row} from "../src";
 import {readAll} from "../src/internal.js";
+import {testConn} from "./conn.js";
 import {ShortRow, Test} from "./model.js";
 import {createTestTabQuery, dropTestTabQuery, fillTestTabQuery, selectFullQuery, testData} from "./queries.js";
 
 
 describe("Receiving data from DB", () => {
 
-    const { query } = connect();
+    const { query } = testConn();
 
     const dropTable = query(dropTestTabQuery).exec;
     const createTable = query(createTestTabQuery).exec;

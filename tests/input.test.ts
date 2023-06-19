@@ -2,14 +2,15 @@ import {strict as assert} from "assert";
 import {createReadStream} from "fs";
 import {Readable, Writable} from "stream";
 import {pipeline} from "stream/promises";
-import connect, {createStreamInput, ParseMode} from "../src/index.js";
+import {createStreamInput, ParseMode} from "../src/index.js";
+import {testConn} from "./conn.js";
 import {ShortRow, Test} from "./model.js";
 import {clearTestTabQuery, createTestTabQuery, dropTestTabQuery, selectFullQuery, testData} from "./queries.js";
 
 
 describe("Sending data to DB", () => {
 
-    const { query, input } = connect();
+    const { query, input } = testConn();
 
     const dropTable = query(dropTestTabQuery).exec;
     const createTable = query(createTestTabQuery).exec;

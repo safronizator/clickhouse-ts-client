@@ -2,13 +2,14 @@ import {strict as assert} from "assert";
 import {Readable, Writable} from "stream";
 import {pipeline} from "stream/promises";
 import connect, {ConnectionError, createStreamInput, DataProcessingError, QueryingError} from "../src/index.js";
+import {testConn} from "./conn.js";
 import {Test} from "./model.js";
 import {createTestTabQuery, dropTestTabQuery, testData} from "./queries.js";
 
 
 describe("Testing errors", () => {
 
-    const { query, input } = connect();
+    const { query, input } = testConn();
     const dropTable = query(dropTestTabQuery).exec;
     const createTable = query(createTestTabQuery).exec;
 
@@ -27,7 +28,7 @@ describe("Testing errors", () => {
     }
 
     it("should check connection error", async () => {
-        const queryError = connect({ host: "localhost", port: 12345 }).query("select 1").loader();
+        const queryError = connect({ host: "localhost-NBDKSjqzc1982" }).query("select 1").loader();
         await assert.rejects(queryError, ConnectionError);
     });
 
