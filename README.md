@@ -5,7 +5,8 @@ Clickhouse DB client for NodeJS written in Typescript.
 ## Key features
 
 - Provides a simple and clear interface for working with ClickHouse databases
-- Supports streaming for efficient memory utilization 
+- Supports streaming for efficient memory utilization
+- Supports parameterized queries
 - Optional type checking for query results and input data
 - Minimal dependencies
 
@@ -16,13 +17,13 @@ Clickhouse DB client for NodeJS written in Typescript.
 - [Guide](#guide)
   - [Setting up a connection](#setting-up-a-connection)
   - [Executing a query](#executing-a-query)
-  - [Receive data from DB](#receive-data-from-db)
+  - [Receiving data from DB](#receiving-data-from-db)
     - [Load/parse whole result](#loadparse-whole-result)
     - [Stream query results](#stream-query-results)
     - [Describe types for query results](#describe-types-for-query-results)
-  - [Send data into DB](#send-data-into-db)
+  - [Sending data into DB](#sending-data-into-db)
     - [Describe types for input data](#describe-types-for-input-data)
-  - [Avoiding SQL injections](#avoiding-sql-injections)
+  - [Parameterized queries](#parameterized-queries)
   - [Error handling](#error-handling)
 - [Contributing](#contributing)
 - [License](#license)
@@ -51,7 +52,8 @@ const { query, input } = clickhouse();
 const createTab = query("CREATE TABLE IF NOT EXISTS clicks (time DateTime, ip IPv4) ENGINE = Memory").exec;
 const dropTab = query("DROP TABLE IF EXISTS clicks").exec;
 const insertData = input("INSERT INTO clicks");
-const getDailyStats = query("SELECT toDate(time) as dt, uniq(ip) FROM clicks GROUP BY dt").loader({ mode: ParseMode.Rows });
+const getDailyStats = query("SELECT toDate(time) as dt, uniq(ip) FROM clicks GROUP BY dt")
+        .loader({ mode: ParseMode.Rows });
 
 await createTab();
 await insertData([
@@ -93,7 +95,7 @@ const { query } = clickhouse();
 await query("CREATE TABLE IF NOT EXISTS clicks (time DateTime, ip IPv4) ENGINE = Memory").exec();
 ```
 
-### Receive data from DB
+### Receiving data from DB
 
 #### Load/parse whole result
 
@@ -174,21 +176,148 @@ const loadClicksE = last100ClicksQuery.loader<Click>(); // compile error!
 const loadClickRowsE = last100ClicksQuery.loader<ClickRow>({ mode: ParseMode.Objects }); // compile error!
 ```
 
-### Send data into DB
+### Sending data into DB
 
-_TODO_
+```javascript
+import { createReadStream } from "fs";
+import { Readable } from "stream";
+import clickhouse, { createStreamInput } from "clickhouse-node-cli";
+
+const { input } = clickhouse();
+
+const insertData = input("INSERT INTO clicks FORMAT CSV");
+
+// Insert data from CSV string:
+await insertData(`2023-06-16 23:45:00,192.168.1.0\n2023-06-17 00:01:15,192.168.1.1`);
+
+// Insert data from array of objects:
+await insertData([
+    { time: "2023-06-16 23:45:00", ip: "192.168.1.0" },
+    { time: "2023-06-17 00:01:15", ip: "192.168.1.1" }
+]);
+
+// Insert data from array of rows:
+await insertData({
+    rows: [
+        ["2023-06-17 14:47:01", "192.168.1.0"],
+        ["2023-06-17 00:01:15", "192.168.1.1"]
+    ]
+});
+
+// Insert data from raw stream:
+await insertData(createReadStream("clicks.csv"));
+
+// Insert data from stream of objects (we use generator here to create a stream):
+async function *generateClicks(n=100) {
+    for (let i=0; i<n; i++) {
+        yield { time: new Date(), ip: "192.168.1.0" };
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+}
+await insertData(Readable.from(generateClicks()));
+
+// Insert data from stream of rows 
+// (we use util function createStreamInput here to create a temporary stream):
+const rows = createStreamInput();
+(async (n=100) => {
+    for (let i=0; i<n; i++) {
+        rows.write([new Date(), "192.168.1.0"]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    rows.end();
+})().catch(console.error);
+await insertData({ rows });
+```
+
+Note: format defined by query will be overridden if you use objects/rows input mode.
 
 #### Describe types for input data
 
-_TODO_
+```typescript
+import { Row } from "clickhouse-node-cli";
 
-### Avoiding SQL injections
+interface Click {
+  time: string;
+  ip: number;
+}
 
-_TODO_
+type ClickRow = Row<CLick, ["time", "ip"]>; // [string, number];
+
+const { input } = clickhouse();
+
+const insertClicks = input<Click>("INSERT INTO clicks");
+await insertData([
+  { time: "2023-06-16 23:45:00", ip: 3232235776 /* "192.168.1.0" in a long format */ }
+]); // OK
+await insertData([
+  { time: "2023-06-16 23:45:00", ip: "192.168.1.0" }
+]); // compile error!
+
+const insertClickRows = input<ClickRow>("INSERT INTO clicks (time, ip)");
+await insertClickRows({
+    rows: [
+        ["2023-06-16 23:45:00", 3232235776]
+    ]
+}); // OK
+await insertClickRows({
+    rows: [
+        ["2023-06-16 23:45:00", "192.168.1.0"]
+    ]
+}); // compile error!
+await insertClickRows([
+  { time: "2023-06-16 23:45:00", ip: 3232235776 /* "192.168.1.0" in a long format */ }
+]); // compile error!
+```
+
+### Parameterized queries
+
+Clickhouse [supports parameterized queries](https://clickhouse.com/docs/en/interfaces/http#cli-queries-with-parameters) in a form of `{name:type}` placeholders. You can use them in your queries and pass values for them as an object:
+
+```javascript
+const { query } = clickhouse();
+const loadData = query("select * from clicks where toDate(time) = {date:String}");
+
+const someApiHandler = async (req, res) => {
+    const { date } = req.query;
+    res.json(await loadData({ date }));
+};
+```
+
+Notes:
+- you should use parameterized queries to avoid [SQL injection](https://en.wikipedia.org/wiki/SQL_injection) when you pass user input to the query string
+- you may not to pre-process the input values some way, because it's not a part of the query string, and you'll just get an error if your input is not correct for the specified format (or format that was inferred from the type of input data)
+
 
 ### Error handling
 
-_TODO_
+There are three types of errors that can be thrown: `ConnectionError`, `DataProcessingError` and `QueryingError`. All of them are subclasses of `ClickhouseError`.
+
+```javascript
+import clickhouse, { ClickhouseError, ConnectionError, DataProcessingError, QueryingError } from "clickhouse-node-cli";
+
+const { query } = clickhouse( { host: "wrong.host" } );
+
+try {
+    await query("INSERT INTO clicks VALUES (1, 2, 3)").exec();
+} catch (err) {
+    if (err instanceof ClickhouseError) {
+        switch (true) {
+            case err instanceof ConnectionError:
+                // handle ConnectionError
+            case err instanceof DataProcessingError:
+                // handle DataProcessingError
+            case err instanceof QueryingError:
+                // handle QueryingError
+            default:
+                // handle other ClickhouseError (normally it should not happen)
+        }
+    } else {
+        throw err;
+    }
+}
+```
+
+Note: `ConnectionError` is thrown only when you try to execute a query, but not when you initialize a connection. So you can create a connection with wrong credentials, but you'll get an error only when you try to execute a query.
 
 ## Contributing
 
