@@ -159,7 +159,7 @@ interface Click {
     ip: number;
 }
 
-type ClickRow = Row<CLick, ["time", "ip"]>; // [string, number];
+type ClickRow = Row<Click, ["time", "ip"]>; // [string, number];
 
 const last100ClicksQuery = query("SELECT time, ip FROM clicks ORDER BY time DESC LIMIT 100");
 
@@ -321,7 +321,7 @@ Note: `ConnectionError` is thrown only when you try to execute a query, but not 
 
 ## Contributing
 
-Contributions are welcome! If you find any issues or have suggestions for improvement, please create an issue or submit a pull request on the [GitHub repository](https://github.com/webproducer/clickhouse-node-cli).
+Contributions are welcome! If you find any issues or have suggestions for improvement, please create an issue or submit a pull request on the [GitHub repository](https://github.com/safronizator/clickhouse-ts-client).
 
 ## License
 
