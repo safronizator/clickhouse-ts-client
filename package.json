@@ -31,7 +31,7 @@
     "typescript",
     "ts"
   ],
-  "author": "safronizator <sasha@webproducers.ru>",
+  "author": "Alexander Safonov <github@safron.pro>",
   "license": "ISC",
   "devDependencies": {
     "@types/mocha": "^10.0.1",
