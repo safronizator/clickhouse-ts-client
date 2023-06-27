@@ -1,4 +1,4 @@
-# clickhouse-node-cli
+# clickhouse-ts-client
 
 Clickhouse DB client for NodeJS written in Typescript.
 
@@ -33,11 +33,11 @@ Clickhouse DB client for NodeJS written in Typescript.
 You can install clickhouse-node-cli using npm/yarn:
 
 ```shell
-npm install clickhouse-node-cli
+npm install clickhouse-ts-client
 
 # or
 
-yarn add clickhouse-node-cli
+yarn add clickhouse-ts-client
 ```
 
 ## Usage example
