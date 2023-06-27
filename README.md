@@ -30,7 +30,7 @@ Clickhouse DB client for NodeJS written in Typescript.
 
 ## Installation
 
-You can install clickhouse-node-cli using npm/yarn:
+You can install clickhouse-ts-client using npm/yarn:
 
 ```shell
 npm install clickhouse-ts-client
@@ -42,10 +42,8 @@ yarn add clickhouse-ts-client
 
 ## Usage example
 
-To use clickhouse-node-cli, require the library and create an instance of the ConnectorInterface:
-
 ```javascript
-import clickhouse, { ParseMode } from "clickhouse-node-cli";
+import clickhouse, { ParseMode } from "clickhouse-ts-client";
 
 const { query, input } = clickhouse();
 
@@ -70,7 +68,7 @@ await dropTab();
 ### Setting up a connection
 
 ```javascript
-import clickhouse from "clickhouse-node-cli";
+import clickhouse from "clickhouse-ts-client";
 
 // using settings object:
 const conn1 = clickhouse({
@@ -152,7 +150,7 @@ Notes:
 You can pass generic type to the loader/reader funcs to get type checking for query results:
 
 ```typescript
-import { Row } from "clickhouse-node-cli";
+import { Row } from "clickhouse-ts-client";
 
 interface Click {
     time: string;
@@ -181,7 +179,7 @@ const loadClickRowsE = last100ClicksQuery.loader<ClickRow>({ mode: ParseMode.Obj
 ```javascript
 import { createReadStream } from "fs";
 import { Readable } from "stream";
-import clickhouse, { createStreamInput } from "clickhouse-node-cli";
+import clickhouse, { createStreamInput } from "clickhouse-ts-client";
 
 const { input } = clickhouse();
 
@@ -234,7 +232,7 @@ Note: format defined by query will be overridden if you use objects/rows input m
 #### Describe types for input data
 
 ```typescript
-import { Row } from "clickhouse-node-cli";
+import { Row } from "clickhouse-ts-client";
 
 interface Click {
   time: string;
@@ -293,7 +291,7 @@ Notes:
 There are three types of errors that can be thrown: `ConnectionError`, `DataProcessingError` and `QueryingError`. All of them are subclasses of `ClickhouseError`.
 
 ```javascript
-import clickhouse, { ClickhouseError, ConnectionError, DataProcessingError, QueryingError } from "clickhouse-node-cli";
+import clickhouse, { ClickhouseError, ConnectionError, DataProcessingError, QueryingError } from "clickhouse-ts-client";
 
 const { query } = clickhouse( { host: "wrong.host" } );
 
@@ -325,5 +323,5 @@ Contributions are welcome! If you find any issues or have suggestions for improv
 
 ## License
 
-clickhouse-node-cli is [MIT licensed](./LICENSE).
+clickhouse-ts-client is [MIT licensed](./LICENSE).
 
