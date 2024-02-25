@@ -1,6 +1,6 @@
 {
   "name": "clickhouse-ts-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Clickhouse DB client for Node JS written in Typescript",
   "type": "module",
   "main": "dist/index.js",
