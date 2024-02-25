@@ -1,4 +1,5 @@
-import {IncomingMessage, request} from "http";
+import {IncomingMessage, request as insecureRequest} from "http";
+import {request as secureRequest} from "https";
 import {PassThrough, Readable} from "stream";
 import {pipeline} from "stream/promises";
 import {URL} from "url";
@@ -43,12 +44,15 @@ enum HttpMethod {
     Post = "post"
 }
 
+const getRequestFunc = (url: URL) => url.protocol === "https:" ? secureRequest : insecureRequest;
+
 const makeRequest = (server: URL, query: string, params: Parameters, input: Input<unknown> | void): Promise<IncomingMessage> =>
     new Promise((resolve, reject) => {
         const url = cloneUrl(server);
         const { data, format } = normalizeInput(input);
         url.searchParams.append("query", format ? forceFormat(query, format) : query);
         Object.entries(params).forEach(([key, value]) => url.searchParams.append(`param_${key}`, value.toString()));
+        const request = getRequestFunc(url);
         const req = request(url, { method: HttpMethod.Post }, res => {
             if (res.statusCode === HttpStatus.OK) {
                 return resolve(res);
