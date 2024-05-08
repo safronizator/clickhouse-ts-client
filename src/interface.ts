@@ -30,6 +30,13 @@ export type DsnUrl = string | URL;
 
 export type Dsn = DsnUrl | DsnOpts;
 
+export interface ConnectionOpts {
+    dsn: Dsn;
+    timeout: number;
+}
+
+export const isDsnOpts = (v: any): v is DsnOpts => typeof v === "object" && typeof v.host === "string";
+
 export interface Parameter {
     toString(): string;
 }

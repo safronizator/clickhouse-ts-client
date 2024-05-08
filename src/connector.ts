@@ -6,11 +6,13 @@ import {URL} from "url";
 import {
     ClickhouseError,
     ConnectionError,
+    ConnectionOpts,
     ConnectorInterface,
     DataProcessingError,
     Dsn,
     Input,
     InputFunc,
+    isDsnOpts,
     Parameters,
     ParseMode,
     ParseOpts,
@@ -46,21 +48,37 @@ enum HttpMethod {
 
 const getRequestFunc = (url: URL) => url.protocol === "https:" ? secureRequest : insecureRequest;
 
-const makeRequest = (server: URL, query: string, params: Parameters, input: Input<unknown> | void): Promise<IncomingMessage> =>
+interface RequestOpts {
+    url: URL;
+    query: string;
+    params: Parameters;
+    input: Input<unknown> | void;
+    timeout: number;
+}
+
+const makeRequest = (opts: RequestOpts): Promise<IncomingMessage> =>
     new Promise((resolve, reject) => {
-        const url = cloneUrl(server);
+        const { url: srcUrl, query, params, input, timeout } = opts;
+        const url = cloneUrl(srcUrl);
         const { data, format } = normalizeInput(input);
         url.searchParams.append("query", format ? forceFormat(query, format) : query);
         Object.entries(params).forEach(([key, value]) => url.searchParams.append(`param_${key}`, value.toString()));
         const request = getRequestFunc(url);
-        const req = request(url, { method: HttpMethod.Post }, res => {
-            if (res.statusCode === HttpStatus.OK) {
-                return resolve(res);
+        const req = request(
+            url,
+            {
+                method: HttpMethod.Post,
+                timeout
+            },
+            res => {
+                if (res.statusCode === HttpStatus.OK) {
+                    return resolve(res);
+                }
+                readAll(res)
+                    .then(msg => reject(new QueryingError(msg || `Got error response from server (status: ${res.statusCode})`)))
+                    .catch(err => reject(new QueryingError(`Error reading response: ${err.message}`)));
             }
-            readAll(res)
-                .then(msg => reject(new QueryingError(msg || `Got error response from server (status: ${res.statusCode})`)))
-                .catch(err => reject(new QueryingError(`Error reading response: ${err.message}`)));
-        });
+        );
         if (data) {
             pipeline(data, req).catch(err => {
                 reject(err instanceof ClickhouseError ? err : new DataProcessingError(err.message));
@@ -73,13 +91,19 @@ const makeRequest = (server: URL, query: string, params: Parameters, input: Inpu
     });
 
 
-export const connect = (dsn?: Dsn): ConnectorInterface => {
+export const connect = (opts?: Dsn | Partial<ConnectionOpts>): ConnectorInterface => {
 
-    const url = dsnToUrl(dsn || defaultUrl);
+    const nOpts: ConnectionOpts = {
+        dsn: defaultUrl,
+        timeout: 5000,
+        ...(typeof opts === "string" || opts instanceof URL || isDsnOpts(opts) ? { dsn: opts } : (opts || {}))
+    };
+    const url = dsnToUrl(nOpts.dsn);
+    const timeout = nOpts.timeout;
 
     const rawStream = (query: string, params: Parameters, input: Input<unknown> | void): Readable => {
         const s = new PassThrough();
-        makeRequest(url, query, params, input).then(res => pipeline(res, s)).catch(err => s.destroy(err));
+        makeRequest({ url, query, params, input, timeout }).then(res => pipeline(res, s)).catch(err => s.destroy(err));
         return s;
     };
 
